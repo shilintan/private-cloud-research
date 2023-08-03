@@ -1,0 +1,12 @@
+#push "dhcp-option DNS 10.8.0.1"
+#push "redirect-gateway def1 bypass-dhcp"
+
+
+explicit-exit-notify 1
+push "dhcp-option DNS 100.100.2.136"
+push "dhcp-option DNS 100.100.2.138"
+
+push "route 172.16.0.0 255.255.0.0"
+push "route 172.22.0.0 255.255.0.0"
+push "route 172.20.0.0 255.255.0.0"
+push "route 100.100.2.0 255.255.255.0"
