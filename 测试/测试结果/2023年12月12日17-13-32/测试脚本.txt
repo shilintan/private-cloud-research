@@ -1,0 +1,38 @@
+--------------------- A Bench Script By spiritlhl ----------------------
+                   测评频道: https://t.me/vps_reviews
+版本：2023.12.12
+更新日志：VPS融合怪测试(集百家之长)
+---------------------基础信息查询--感谢所有开源项目---------------------
+ CPU 型号          : Intel(R) Xeon(R) CPU E5-2680 v4 @ 2.40GHz
+ CPU 核心数        : 2 物理核心, 28 总核心, 56 总线程数
+ CPU 频率          : 1200.084 MHz
+ CPU 缓存          : L1: 896.00 KB / L2: 7.00 MB / L3: 70.00 MB
+ 硬盘空间          : 28.02 GiB / 217.50 GiB
+ 启动盘路径        : /dev/sda1
+ 内存              : 21.40 GiB / 31.24 GiB
+ Swap              : [ no swap partition or swap file detected ]
+ 系统在线时间      : 0 days, 0 hour 7 min
+ 负载              : 2.13, 4.83, 2.78
+ 系统              : Debian GNU/Linux 12 (bookworm) (x86_64)
+ AES-NI指令集      : ✔ Enabled
+ VM-x/AMD-V支持    : ✔ Enabled
+ 架构              : x86_64 (64 Bit)
+ 内核              : 6.1.0-13-amd64
+ TCP加速方式       : cubic
+ 虚拟化架构        : Dedicated
+ NAT类型           : 独立映射,独立过滤,不支持回环
+ IPV4 ASN          : AS4812 China Telecom (Group)
+ IPV4 位置         : Shanghai / Shanghai / CN
+---------------------CPU测试--感谢lemonbench开源------------------------
+ -> CPU 测试中 (Fast Mode, 1-Pass @ 5sec)
+ 1 线程测试(1核)得分:           931 Scores
+ 56 线程测试(多核)得分:                 40407 Scores
+---------------------内存测试--感谢lemonbench开源-----------------------
+ -> 内存测试 Test (Fast Mode, 1-Pass @ 5sec)
+ 单线程读测试:          19776.12 MB/s
+ 单线程写测试:          14870.11 MB/s
+------------------磁盘dd读写测试--感谢lemonbench开源--------------------
+ -> 磁盘IO测试中 (4K Block/1M Block, Direct Mode)
+ 测试操作               写速度                                  读速度
+ 100MB-4K Block         98.3 MB/s (23.99 IOPS, 1.07s))          137 MB/s (33396 IOPS, 0.77s)
+ 1GB-1M Block           280 MB/s (267 IOPS, 3.75s)              746 MB/s (711 IOPS, 1.40s)

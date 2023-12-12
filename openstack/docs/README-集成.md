@@ -1,0 +1,147 @@
+[toc]
+
+# openstack on kubernetes(openstack-helm)
+
+参考文档: https://docs.openstack.org/openstack-helm/latest/
+
+## 准备脚本文件
+
+```
+mkdir ~/osh
+cd ~/osh
+git clone https://opendev.org/openstack/openstack-helm.git
+git clone https://opendev.org/openstack/openstack-helm-infra.git
+
+
+export OPENSTACK_RELEASE=2023.2
+export CONTAINER_DISTRO_NAME=ubuntu
+export CONTAINER_DISTRO_VERSION=jammy
+```
+
+## 主机标记、命名空间
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/common/prepare-k8s.sh
+```
+
+## 部署ceph(跳过)
+
+```
+cd ~/osh/openstack-helm-infra
+./tools/deployment/openstack-support-rook/020-ceph.sh
+./tools/deployment/openstack-support-rook/025-ceph-ns-activate.sh
+```
+
+## openstack客户端
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/common/setup-client.sh
+```
+
+## 路由(可选)
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/common/ingress.sh
+```
+
+## 中间件
+
+rabbitmq, 镜像
+
+mariadb, mysql-innodb-cluster
+
+memcached
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/common/rabbitmq.sh
+./tools/deployment/component/common/mariadb.sh
+./tools/deployment/component/common/memcached.sh
+```
+
+​	问题: 官方提供的都是单节点的, 会有单点问题
+
+## openstack服务
+
+keystone -> compute-kit(placement->nova->neutron)->cinder/ceph->glance
+
+### Keystone
+
+身份和认证服务
+
+身份验证和授权的中心点，管理用户身份、角色以及对 OpenStack 资源的访问
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/keystone/keystone.sh
+```
+
+### Heat
+
+编排服务
+
+为部署和管理云资源提供模板和自动化
+
+将基础设施定义为代码，从而更轻松地通过模板和自动化脚本在 OpenStack 中创建和管理复杂的环境
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/heat/heat.sh
+```
+
+### Glance
+
+镜像服务组件
+
+管理和编目虚拟机映像，例如操作系统映像和快照
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/glance/glance.sh
+```
+
+### compute kit
+
+Placement
+
+​	帮助管理和分配 OpenStack 云环境中资源的服务
+
+​	帮助 Nova（计算）为虚拟机实例找到并分配正确的资源（CPU、内存等）
+
+Nova
+
+​	管理和编排 OpenStack 云中虚拟机的计算服务
+
+​	配置和调度实例，处理它们的生命周期，并与底层虚拟机管理程序交互
+
+Neutron
+
+​	网络服务
+
+​	提供网络连接并使用户能够为其虚拟机和其他服务创建和管理网络资源
+
+​	OpenVSwitch比linuxbridge 更适用于大规模复杂场景(多机房)
+
+
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/compute-kit/openvswitch.sh
+./tools/deployment/component/compute-kit/libvirt.sh
+./tools/deployment/component/compute-kit/compute-kit.sh
+```
+
+### Cinder
+
+块存储服务组件
+
+为虚拟机管理和提供持久性块存储，使用户能够根据需要将持久性存储卷附加到其虚拟机或从中分离
+
+```
+cd ~/osh/openstack-helm
+./tools/deployment/component/cinder/cinder.sh
+```
+
