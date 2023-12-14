@@ -51,13 +51,13 @@ FEATURE_GATE="ldap"; if [[ ${FEATURE_GATES//,/ } =~ (^|[[:space:]])${FEATURE_GAT
 
   #NOTE: Testing we can auth against the LDAP user
   unset OS_CLOUD
-  openstack --os-auth-url http://keystone-api.openstack.svc.cluster.local:5000/v3 --os-username bob --os-password password --os-user-domain-name ${domain} --os-identity-api-version 3 token issue
+  openstack --os-auth-url http://keystone.openstack.svc.cluster.local/v3 --os-username bob --os-password password --os-user-domain-name ${domain} --os-identity-api-version 3 token issue
 
   #NOTE: Test the domain specific thing works
   curl --verbose -X GET \
     -H "Content-Type: application/json" \
     -H "X-Auth-Token: $token" \
-    http://keystone-api.openstack.svc.cluster.local:5000/v3/domains/${domainId}/config
+    http://keystone.openstack.svc.cluster.local/v3/domains/${domainId}/config
 fi
 
 if [ "x${RUN_HELM_TESTS}" != "xno" ]; then
@@ -65,6 +65,6 @@ if [ "x${RUN_HELM_TESTS}" != "xno" ]; then
 fi
 
 FEATURE_GATE="tls"; if [[ ${FEATURE_GATES//,/ } =~ (^|[[:space:]])${FEATURE_GATE}($|[[:space:]]) ]]; then
-  curl --cacert /etc/openstack-helm/certs/ca/ca.pem -L http://keystone-api.openstack.svc.cluster.local:5000
+  curl --cacert /etc/openstack-helm/certs/ca/ca.pem -L https://keystone.openstack.svc.cluster.local
   curl --cacert /etc/openstack-helm/certs/ca/ca.pem -L https://keystone-api.openstack.svc.cluster.local:5000
 fi

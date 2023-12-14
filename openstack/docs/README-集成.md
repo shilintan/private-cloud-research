@@ -6,9 +6,9 @@
 
 # 主机
 
-```
-pip3
-```
+至少挂载两块盘
+
+提前安装ceph
 
 
 
@@ -47,6 +47,8 @@ export CONTAINER_DISTRO_VERSION=jammy
 
 
 
+废弃
+
 ```
 kubectl -n openstack get svc
 
@@ -58,12 +60,7 @@ EOF
 
 
 
-```
-domain localdomain
-search localdomain
-nameserver 192.168.203.2
-search .
-```
+
 
 
 
@@ -215,6 +212,12 @@ bash ./tools/deployment/component/cinder/cinder.sh
 # 调试
 
 ```
+kubectl -n openstack logs -f --tail 300 mariadb-server-0
+```
+
+
+
+```
 kubectl -n openstack get pod
 
 kubectl -n openstack describe pod mariadb-ingress-error-pages-74c789984f-qp5dg
@@ -234,5 +237,28 @@ kubectl -n openstack describe pod keystone-api-567b8d975-bnp7h
 kubectl -n openstack describe pod keystone-rabbit-init-lgcbd
 kubectl -n openstack describe pod keystone-domain-manage-cgmzs
 
+```
+
+
+
+```
+kubectl -n openstack get pod|grep heat|grep -v Running|grep -v Completed
+kubectl -n openstack describe pod heat-engine-7c6b5df79f-6tl7b
+kubectl -n openstack describe pod heat-api-579896c87c-vpgwt
+kubectl -n openstack describe pod heat-cfn-6bb5f6854c-8sxf2
+kubectl -n openstack describe pod heat-engine-cleaner-28375885-qb5tc
+kubectl -n openstack logs -f --tail 300 deploy/heat-engine init
+kubectl -n openstack logs -f --tail 300 deploy/heat-api
+kubectl -n openstack logs -f --tail 300 deploy/heat-cfn
+kubectl -n openstack logs -f --tail 300 deploy/heat-engine-cleaner
+```
+
+
+
+```
+kubectl -n openstack get pod|grep glance|grep -v Running|grep -v Completed
+kubectl -n openstack describe pod glance-api-6bdf6749bd-vmzqx
+
+kubectl -n  openstack get pvc
 ```
 
