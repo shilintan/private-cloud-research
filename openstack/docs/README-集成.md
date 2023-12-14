@@ -4,7 +4,70 @@
 
 参考文档: https://docs.openstack.org/openstack-helm/latest/
 
+# 主机
+
+```
+pip3
+```
+
+
+
 ## 准备脚本文件
+
+## 自定义
+
+```
+上传文件 deploy.zip
+
+apt install -y unzip
+apt install -y dos2unix
+apt install -y make
+apt install -y python3-pip
+apt install -y jq
+apt install -y bc
+apt install -y vim
+
+
+rm /usr/lib/python3.11/EXTERNALLY-MANAGED
+
+mkdir ~/osh
+cp -f ~/deploy.zip ~/osh
+cd ~/osh
+rm -rf ~/osh/openstack-helm ~/osh/openstack-helm-infra
+unzip deploy.zip
+
+
+find . -type f -print0 | xargs -0 dos2unix
+find . -type f -print0 | xargs -0 chmod +x
+
+export OPENSTACK_RELEASE=2023.2
+export CONTAINER_DISTRO_NAME=ubuntu
+export CONTAINER_DISTRO_VERSION=jammy
+```
+
+
+
+```
+kubectl -n openstack get svc
+
+cat >> /etc/hosts <<EOF
+10.96.2.163 keystone-api.openstack.svc.cluster.local
+heat.openstack.svc.cluster.local
+EOF
+```
+
+
+
+```
+domain localdomain
+search localdomain
+nameserver 192.168.203.2
+search .
+```
+
+
+
+## 官方(废弃)
 
 ```
 mkdir ~/osh
@@ -22,7 +85,7 @@ export CONTAINER_DISTRO_VERSION=jammy
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/common/prepare-k8s.sh
+bash ./tools/deployment/common/prepare-k8s.sh
 ```
 
 ## 部署ceph(跳过)
@@ -30,21 +93,21 @@ cd ~/osh/openstack-helm
 ```
 cd ~/osh/openstack-helm-infra
 ./tools/deployment/openstack-support-rook/020-ceph.sh
-./tools/deployment/openstack-support-rook/025-ceph-ns-activate.sh
+bash ./tools/deployment/openstack-support-rook/025-ceph-ns-activate.sh
 ```
 
 ## openstack客户端
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/common/setup-client.sh
+bash ./tools/deployment/common/setup-client.sh
 ```
 
-## 路由(可选)
+## 路由(跳过)
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/common/ingress.sh
+bash ./tools/deployment/component/common/ingress.sh
 ```
 
 ## 中间件
@@ -57,9 +120,9 @@ memcached
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/common/rabbitmq.sh
-./tools/deployment/component/common/mariadb.sh
-./tools/deployment/component/common/memcached.sh
+bash ./tools/deployment/component/common/rabbitmq.sh
+bash ./tools/deployment/component/common/mariadb.sh
+bash ./tools/deployment/component/common/memcached.sh
 ```
 
 ​	问题: 官方提供的都是单节点的, 会有单点问题
@@ -76,7 +139,7 @@ keystone -> compute-kit(placement->nova->neutron)->cinder/ceph->glance
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/keystone/keystone.sh
+bash ./tools/deployment/component/keystone/keystone.sh
 ```
 
 ### Heat
@@ -89,7 +152,7 @@ cd ~/osh/openstack-helm
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/heat/heat.sh
+bash ./tools/deployment/component/heat/heat.sh
 ```
 
 ### Glance
@@ -100,7 +163,7 @@ cd ~/osh/openstack-helm
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/glance/glance.sh
+bash ./tools/deployment/component/glance/glance.sh
 ```
 
 ### compute kit
@@ -129,9 +192,9 @@ Neutron
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/compute-kit/openvswitch.sh
-./tools/deployment/component/compute-kit/libvirt.sh
-./tools/deployment/component/compute-kit/compute-kit.sh
+bash ./tools/deployment/component/compute-kit/openvswitch.sh
+bash ./tools/deployment/component/compute-kit/libvirt.sh
+bash ./tools/deployment/component/compute-kit/compute-kit.sh
 ```
 
 ### Cinder
@@ -142,6 +205,34 @@ cd ~/osh/openstack-helm
 
 ```
 cd ~/osh/openstack-helm
-./tools/deployment/component/cinder/cinder.sh
+bash ./tools/deployment/component/cinder/cinder.sh
+```
+
+
+
+
+
+# 调试
+
+```
+kubectl -n openstack get pod
+
+kubectl -n openstack describe pod mariadb-ingress-error-pages-74c789984f-qp5dg
+kubectl -n openstack describe pod mariadb-ingress-6764ffdb49-6cjd6
+kubectl -n openstack describe pod memcached-memcached-7bdb9c5899-brwh6
+
+kubectl -n openstack logs -f --tail 300 mariadb-ingress-5b4755745c-nh8v2
+
+kubectl -n openstack delete pod mariadb-ingress-error-pages-869bc4b96-wqn8k
+```
+
+
+
+```
+kubectl -n openstack describe pod keystone-fernet-setup-brfnc
+kubectl -n openstack describe pod keystone-api-567b8d975-bnp7h
+kubectl -n openstack describe pod keystone-rabbit-init-lgcbd
+kubectl -n openstack describe pod keystone-domain-manage-cgmzs
+
 ```
 
