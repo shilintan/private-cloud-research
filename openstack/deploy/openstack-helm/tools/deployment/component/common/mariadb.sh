@@ -25,8 +25,8 @@ make -C ${HELM_CHART_ROOT_PATH} mariadb
 : ${OSH_EXTRA_HELM_ARGS:=""}
 helm upgrade --install mariadb ${HELM_CHART_ROOT_PATH}/mariadb \
     --namespace=openstack \
-    --set volume.use_local_path_for_single_pod_cluster.enabled=true \
-    --set volume.enabled=false \
+    --set volume.use_local_path_for_single_pod_cluster.enabled=false \
+    --set volume.enabled=true \
     --set pod.replicas.server=1 \
     ${OSH_EXTRA_HELM_ARGS:=} \
     ${OSH_EXTRA_HELM_ARGS_MARIADB}
