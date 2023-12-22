@@ -45,7 +45,7 @@ if [ "x$(systemd-detect-virt)" == "xnone" ]; then
   helm upgrade --install nova ./nova \
       --namespace=openstack \
       --set bootstrap.wait_for_computes.enabled=true \
-      --set conf.ceph.enabled=${CEPH_ENABLED} \
+      --set conf.ceph.enabled=false \
       ${OSH_EXTRA_HELM_ARGS:=} \
       ${OSH_EXTRA_HELM_ARGS_NOVA}
 else
@@ -53,7 +53,7 @@ else
   helm upgrade --install nova ./nova \
       --namespace=openstack \
       --set bootstrap.wait_for_computes.enabled=true \
-      --set conf.ceph.enabled=${CEPH_ENABLED} \
+      --set conf.ceph.enabled=false \
       --set conf.nova.libvirt.virt_type=qemu \
       --set conf.nova.libvirt.cpu_mode=none \
       ${OSH_EXTRA_HELM_ARGS:=} \

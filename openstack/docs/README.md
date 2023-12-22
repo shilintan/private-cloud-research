@@ -399,6 +399,196 @@ API端点是处理身份验证的基本HTTP Web服务， 使用各种 API 进行
 - 为项目配置VLAN
 - 为计算节点配置网络
 
+
+
+### AMQP 和 Nova
+
+AMQP 是 OpenStack 云选择的消息传递技术。 AMQP 代理（RabbitMQ 或 Qpid）位于任意两个 Nova 组件之间，并且 允许他们以松散耦合的方式进行通信。更准确地说，诺瓦 组件（OpenStack 的计算结构）使用远程过程调用 (RPC 下文）相互沟通；然而这样的范式是建立起来的 发布/订阅范式之上，以便可以实现以下好处 实现：
+
+- 客户端和服务端解耦（比如客户端不需要 知道仆人的参考号在哪里）。
+- 客户端和服务端之间完全不同步（例如客户端不同步） 需要servant在远程调用的同时运行）。
+- 远程调用的随机平衡（例如，如果有更多仆人启动并且 正在运行的单向调用会透明地分派给第一个可用的 仆人）。
+
+Nova 使用直接、扇出和基于主题的交换。架构看起来 如下图所示：
+
+[![../_images/rpc-arch.png](./README.assets/rpc-arch.png)](https://docs.openstack.org/nova/pike/_images/rpc-arch.png)
+
+Nova 实现了 RPC（既是请求+响应，又是单向，分别昵称 `rpc.call` 和 `rpc.cast`）通过 AMQP 提供适配器类 负责将消息编组和解组到函数调用中。每个 Nova 服务（例如 Compute、Scheduler 等）在以下位置创建两个队列： 初始化时间，接受带有路由键的消息 `NODE-TYPE.NODE-ID`（例如`compute.hostname`）和另一个，其中 接受带有通用路由键的消息`NODE-TYPE`（例如 `compute`）。前者专门用于 Nova-API 需要重定向时 向特定节点发出命令，如 。在这种情况下， 仅主机管理程序正在运行虚拟机的计算节点 可以杀死实例。当 RPC 调用时，API 充当消费者 请求/响应，否则它仅充当发布者。`euca-terminate instance`
+
+#### Nova RPC 映射[¶](https://docs.openstack.org/nova/pike/reference/rpc.html#nova-rpc-mappings)
+
+下图展示了消息代理节点（简称消息代理节点）的内部结构 图中的 RabbitMQ 节点）当单个实例部署并共享时 OpenStack 云。每个 Nova 组件都连接到消息代理，并且， 取决于其个性（例如计算节点或网络节点）， 可以将队列用作 Invoker（例如 API 或 Scheduler）或 Worker （例如计算或网络）。 Invoker 和 Workers 实际上并不存在于 Nova 对象模型，但我们将使用它们作为抽象 明晰。 Invoker 是在队列系统中发送消息的组件 通过两个操作：1) `rpc.call` 和 ii) `rpc.cast`；工人是 从队列系统接收消息并做出相应回复的组件 `rpc.call` 操作。
+
+图 2 显示了以下内部元素：
+
+- 主题发布者
+
+  当 `rpc.call` 或 `rpc.cast` 时，主题发布者就会诞生 操作被执行；该对象被实例化并用于推送消息 到排队系统。每个发布者始终连接到同一个 基于主题的交流；它的生命周期仅限于消息传递。
+
+- 直接消费者
+
+  直接消费者诞生当（且仅当）`rpc.call` 操作是 被处决；该对象被实例化并用于接收响应消息 从排队系统。每个消费者都连接到一个独特的直接基础 通过独特的独占队列进行交换；它的生命周期仅限于 消息传递；交换和队列标识符由 UUID 确定 生成器，并在主题发布者发送的消息中进行编组（仅 `rpc.call` 操作）。
+
+- 主题消费者
+
+  一旦 Worker 被实例化并存在，Topic Consumer 就会启动 整个生命周期；该对象用于接收来自 队列，它会调用 Worker 角色定义的适当操作。 A 主题消费者通过共享连接到相同的基于主题的交换 队列或通过唯一的独占队列。每个Worker有两个主题消费者， 仅在 `rpc.cast` 操作期间寻址（并且它连接到 一个共享队列，其交换密钥为 `topic`），另一个是 仅在 `rpc.call` 操作期间寻址（并且它连接到一个唯一的 交换密钥为 `topic.host` 的队列）。
+
+- 直接出版商
+
+  直接发布商仅在`rpc.call`操作期间生效，并且它 被实例化以返回请求/响应所需的消息 手术。该对象连接到一个基于直接的交换，其身份是 由传入消息决定。
+
+- 话题交流
+
+  Exchange 是存在于虚拟主机上下文中的路由表 （Qpid或RabbitMQ提供的多租户机制）；它的类型（例如 topic 与 direct）决定路由策略；消息代理节点将 Nova 中的每个主题只有一个基于主题的交换。
+
+- 直接交换
+
+  这是在`rpc.call`操作期间创建的路由表；那里 在整个生命周期中这种交换的例子有很多 消息代理节点，每个 `rpc.call` 调用一个。
+
+- 队列元素
+
+  队列是一个消息桶。消息将保留在队列中，直到消费者 （主题或直接消费者）连接到队列并获取它。队列 可以共享，也可以独占。路由键为 `topic` 的队列是 在具有相同性格的工人之间共享。
+
+[![../_images/rpc-rabt.png](./README.assets/rpc-rabt.png)](https://docs.openstack.org/nova/pike/_images/rpc-rabt.png)
+
+#### RPC 调用[¶](https://docs.openstack.org/nova/pike/reference/rpc.html#rpc-calls)
+
+下图显示了`rpc.call`操作期间的消息流：
+
+1. 实例化一个Topic Publisher，将消息请求发送到队列中 系统;在发布操作之前，直接消费者是 实例化以等待响应消息。
+2. 一旦消息被交换器发送，它就会被主题获取 消费者由路由键（例如“topic.host”）指定并传递给 负责该任务的工人。
+3. 任务完成后，将分配直接发布者来发送 向排队系统响应消息。
+4. 一旦消息被交换器分派，它就会被 Direct 获取。 消费者由路由键（例如`msg_id`）指定并传递给 调用者。
+
+[![../_images/rpc-flow-1.png](./README.assets/rpc-flow-1.png)](https://docs.openstack.org/nova/pike/_images/rpc-flow-1.png)
+
+#### RPC 转换[¶](https://docs.openstack.org/nova/pike/reference/rpc.html#rpc-casts)
+
+下图显示了`rpc.cast`操作期间的消息流：
+
+1. 实例化一个Topic Publisher，将消息请求发送到队列中 系统。
+2. 一旦消息被交换器发送，它就会被主题获取 消费者由路由键（例如“topic”）决定并传递给 负责这项任务的工人。
+
+[![../_images/rpc-flow-2.png](./README.assets/rpc-flow-2.png)](https://docs.openstack.org/nova/pike/_images/rpc-flow-2.png)
+
+#### AMQP 代理负载[¶](https://docs.openstack.org/nova/pike/reference/rpc.html#amqp-broker-load)
+
+在任何给定时间，运行 Qpid 或 Qpid 的消息代理节点的负载 RabbitMQ 是以下参数的函数：
+
+- API调用吞吐量
+
+  由服务提供的 API 调用数量（更准确地说`rpc.call` 操作） OpenStack 云规定了基于直接的交换、相关队列的数量 以及与之相关的直接消费者。
+
+- 工人数量
+
+  具有相同性格的工人共享一个队列；然而 有多少个worker就有多少个独占队列；的数量 工作人员还规定了基于主题的路由键的数量 交换，由所有工人共享。
+
+下图显示了 Nova 组件启动后 RabbitMQ 节点的状态。 在测试环境中引导。 Nova 创建的交换器和队列 组成部分是：
+
+- 交流
+  1. nova（主题交换）
+- 队列
+  1. `compute.phantom`（`phantom` 是主机名）
+  2. `compute`
+  3. `network.phantom`（`phantom` 是主机名）
+  4. `network`
+  5. `scheduler.phantom`（`phantom` 是主机名）
+  6. `scheduler`
+
+[![../_images/rpc-state.png](./README.assets/rpc-state.png)](https://docs.openstack.org/nova/pike/_images/rpc-state.png)
+
+#### RabbitMQ 陷阱[¶](https://docs.openstack.org/nova/pike/reference/rpc.html#rabbitmq-gotchas)
+
+Nova 使用 Kombu 连接到 RabbitMQ 环境。昆布是一条蟒蛇 反过来使用 AMQPLib 的库，AMQPLib 是一个实现标准 AMQP 的库 在撰写本文时为 0.8。使用 Kombu 时，调用者和工作人员需要 以下参数以便实例化连接的 Connection 对象 到 RabbitMQ 服务器（请注意，以下大部分材料都可以 也可在 Kombu 文档中找到；已经在这里总结和修改了 为了清楚起见）：
+
+- `hostname`
+
+  AMQP 服务器的主机名。
+
+- `userid`
+
+  用于向服务器进行身份验证的有效用户名。
+
+- `password`
+
+  用于向服务器进行身份验证的密码。
+
+- `virtual_host`
+
+  要使用的虚拟主机的名称。该虚拟主机必须存在于 服务器，并且用户必须有权访问它。默认为“/”。
+
+- `port`
+
+  AMQP 服务器的端口。默认为 `5672` (amqp)。
+
+以下参数为默认值：
+
+- `insist`
+
+  坚持连接到服务器。在具有多个的配置中 负载共享服务器，Insist 选项告诉服务器客户端正在 坚持连接到指定的服务器。默认值为 False。
+
+- `connect_timeout`
+
+  客户端放弃与服务器的连接之前的超时时间（以秒为单位）。 默认是没有超时的。
+
+- `ssl`
+
+  使用 SSL 连接到服务器。默认值为 False。
+
+更准确地说，消费者需要以下参数：
+
+- `connection`
+
+  上面提到的Connection对象。
+
+- `queue`
+
+  队列的名称。
+
+- `exchange`
+
+  队列绑定到的交换的名称。
+
+- `routing_key`
+
+  路由键的解释取决于 `exchange_type` 属性。直接兑换如果消息的路由键属性和 `routing_key` 属性 队列相同，则将消息转发到该队列。扇出交换消息被转发到绑定交换器的队列，即使 绑定没有密钥。话题交流如果消息的路由键属性与消息的路由键匹配 根据原始模式匹配方案的密钥，则消息是 转发到队列。消息路由键由单词组成 用点分隔（`.`，如域名）和两个特殊字符 可用；星号 (`*`) 和哈希 (`#`)。星星与任何单词匹配， 并且哈希匹配零个或多个单词。例如 `.stock.#` 匹配 路由键 `usd.stock` 和 `eur.stock.db` 但不是 `stock.nasdaq`。
+
+- `durable`
+
+  该标志决定了交换器和队列的持久性；耐用的 当 RabbitMQ 服务器重新启动时，交换和队列保持活动状态。 非持久交换/队列（瞬态交换/队列）在以下情况下被清除： 服务器重新启动。值得注意的是，AMQP指定持久队列 无法绑定到瞬态交换。默认为 True。
+
+- `auto_delete`
+
+  如果设置，则当所有队列都使用完交换器后，交换器将被删除。 默认值为 False。
+
+- `exclusive`
+
+  独占队列（例如非共享队列）只能由 当前连接。当独占打开时，这也意味着 `auto_delete`。 默认值为 False。
+
+- `exchange_type`
+
+  AMQP 定义了几种默认交换类型（路由算法），涵盖 大多数常见的消息传递用例。
+
+- `auto_ack`
+
+  收到消息后会自动处理确认。经过 默认`auto_ack`设置为False，需要接收者手动 处理确认。
+
+- `no_ack`
+
+  它禁用服务器端的确认。这不同于 `auto_ack` 确认已完全关闭。这 功能提高了性能，但以可靠性为代价。留言 如果客户端在将它们传递给应用程序之前死亡，则可能会迷失方向。
+
+- `auto_declare`
+
+  如果这是 True 并且设置了交换名称，则交换将是 在实例化时自动声明。默认情况下自动声明处于启用状态。
+
+发布者指定了消费者的大部分参数（比如他们不 指定队列名称），但他们还可以指定以下内容：
+
+- `delivery_mode`
+
+  用于消息的默认传送模式。该值为整数。这 RabbitMQ 支持以下交付模式：`1`（短暂的）该消息是暂时的。这意味着它仅存储在内存中，并且是 如果服务器死机或重新启动，则会丢失。`2`（执着的）该消息是持久的。这意味着消息同时被存储 内存中和磁盘上，因此如果服务器死机或 重新启动。
+
+默认值为`2`（持久）。在发送操作期间，发布者 可以覆盖消息的传递模式，例如，瞬态 消息可以通过持久队列发送。
+
 # 存储
 
 ## 磁盘评估

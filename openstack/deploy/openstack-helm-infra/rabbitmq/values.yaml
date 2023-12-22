@@ -146,7 +146,7 @@ pod:
       mariadb:
         min_available: 0
   resources:
-    enabled: false
+    enabled: true
     prometheus_rabbitmq_exporter:
       limits:
         memory: "1024Mi"
@@ -156,8 +156,8 @@ pod:
         cpu: "500m"
     server:
       limits:
-        memory: "128Mi"
-        cpu: "500m"
+        memory: "12800Mi"
+        cpu: "5000m"
       requests:
         memory: "128Mi"
         cpu: "500m"

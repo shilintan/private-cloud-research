@@ -4,29 +4,7 @@
 echo 1 | bash ecs.sh
 ```
 
-```shell
-bash yabs.sh -i -n
-```
 
-
-# 测试磁盘
-
-```
-apt install -y fio
-
-echo "顺序读"
-fio -name iops -rw=read -bs=4k -runtime=10 -iodepth 1      -filename /dev/sda -ioengine libaio -direct=1
-echo "随机读"
-fio -name iops -rw=randread -bs=4k -runtime=10 -iodepth 1  -filename /dev/sda -ioengine libaio -direct=1
-echo "顺序写"
-fio -name iops -rw=write -bs=4k -runtime=10 -iodepth 1     -filename /dev/sda -ioengine libaio -direct=1
-echo "随机写"
-fio -name iops -rw=randwrite -bs=4k -runtime=10 -iodepth 1 -filename /dev/sda -ioengine libaio -direct=1
-echo "顺序混合读写"
-fio -name iops -rw=rw -bs=4k -runtime=10 -iodepth 1        -filename /dev/sda -ioengine libaio -direct=1
-echo "随机混合读写"
-fio -name iops -rw=randrw -bs=4k -runtime=10 -iodepth 1    -filename /dev/sda -ioengine libaio -direct=1
-```
 
 
 # 测试网速

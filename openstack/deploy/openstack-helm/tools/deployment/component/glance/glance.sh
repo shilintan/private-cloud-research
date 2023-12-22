@@ -27,7 +27,7 @@ make glance
 tee /tmp/glance.yaml <<EOF
 storage: ${GLANCE_BACKEND}
 volume:
-  class_name: standard
+  class_name: rook-ceph-block
 bootstrap:
   structured:
     images:

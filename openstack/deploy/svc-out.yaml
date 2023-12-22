@@ -1,0 +1,44 @@
+---
+# Please edit the object below. Lines beginning with a '#' will be ignored,
+# and an empty file will abort the edit. If an error occurs while saving this file will be
+# reopened with the relevant failures.
+#
+apiVersion: v1
+kind: Service
+metadata:
+  annotations:
+    meta.helm.sh/release-name: rabbitmq
+    meta.helm.sh/release-namespace: openstack
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    application: rabbitmq
+    component: server
+    release_group: rabbitmq
+  name: rabbitmq-out
+  namespace: openstack
+spec:
+  ipFamilyPolicy: SingleStack
+  ports:
+    - name: amqp
+      port: 5672
+      protocol: TCP
+      targetPort: 5672
+    - name: clustering
+      port: 25672
+      protocol: TCP
+      targetPort: 25672
+    - name: http
+      port: 15672
+      protocol: TCP
+      targetPort: 15672
+      nodePort: 32419
+    - name: metrics
+      port: 15692
+      protocol: TCP
+      targetPort: 15692
+  selector:
+    application: rabbitmq
+    component: server
+    release_group: rabbitmq
+  sessionAffinity: None
+  type: NodePort

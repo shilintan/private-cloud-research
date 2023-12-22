@@ -24,8 +24,7 @@ make -C ${HELM_CHART_ROOT_PATH} rabbitmq
 #NOTE: Deploy command
 helm upgrade --install rabbitmq ${HELM_CHART_ROOT_PATH}/rabbitmq \
     --namespace=openstack \
-    --set volume.enabled=true \
-    --set pod.replicas.server=1 \
+    --set volume.class_name=rook-ceph-block \
     ${OSH_EXTRA_HELM_ARGS:=} \
     ${OSH_EXTRA_HELM_ARGS_RABBITMQ}
 

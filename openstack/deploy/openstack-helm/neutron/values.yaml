@@ -363,13 +363,13 @@ pod:
     dhcp_agent:
       dhcp_agent:
         readiness:
-          enabled: true
+          enabled: false
           params:
             initialDelaySeconds: 30
             periodSeconds: 190
             timeoutSeconds: 185
         liveness:
-          enabled: true
+          enabled: false
           params:
             initialDelaySeconds: 120
             periodSeconds: 600
@@ -377,13 +377,13 @@ pod:
     l3_agent:
       l3_agent:
         readiness:
-          enabled: true
+          enabled: false
           params:
             initialDelaySeconds: 30
             periodSeconds: 190
             timeoutSeconds: 185
         liveness:
-          enabled: true
+          enabled: false
           params:
             initialDelaySeconds: 120
             periodSeconds: 600
